@@ -37,7 +37,7 @@ SERPINA3_cachexia_biomarker/
 │   └── 02_DEG_NicheNet_analysis.R        # Fig 2D-E: DEG heatmap, NicheNet
 │
 ├── Figure3/                           # Mouse Serum Proteomics
-│   └── 01_Mouse_serum_proteomics.R       # Fig 3F-I: Heatmaps, Stouffer, Lollipop
+│   └── 01_Mouse_serum_proteomics.R       # Fig 3H-I: Heatmaps, Stouffer, Lollipop
 │
 ├── Figure4/                           # Human Serum Validation
 │   └── 01_Human_serum_validation.R       # Fig 4A-C: PCA plot, volcano plot
