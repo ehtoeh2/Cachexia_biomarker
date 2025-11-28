@@ -141,44 +141,53 @@ saveRDS(survivor_list, file.path(OUTPUT_DIR, "CellType_survivors.rds"))
 # 6. Figure 2D: Cell Type-Specific Heatmap
 # ----------------------------------------------------------------------------
 
-# 1) FAP-origin & Myonuclei-origin gene sets
-fap_genes <- c(FAP_gc2_survivors, FAP_gc3_survivors, FAP_gc4_survivors)
-myo_genes <- c(Myonuclei_GC2_survivors, Myonuclei_GC3_survivors, Myonuclei_GC4_survivors)
+# Create gene grouping information
+gene_group_vec <- character(length(all_survivors))
+names(gene_group_vec) <- all_survivors
 
-# 2) group_id 
+gene_group_vec[c(FAP_gc2_survivors, Myonuclei_GC2_survivors)] <- "GC2"
+gene_group_vec[c(FAP_gc3_survivors, Myonuclei_GC3_survivors)] <- "GC3"
+gene_group_vec[c(FAP_gc4_survivors, Myonuclei_GC4_survivors)] <- "GC4"
+
+# Create group ID for heatmap
 subset_obj$group_id <- paste(Idents(subset_obj), subset_obj$orig.ident, sep = "-")
 
-# 3) AverageExpression
+# Calculate average expression
 DefaultAssay(subset_obj) <- "RNA"
 avg_exp <- AverageExpression(
-  subset_obj,
-  features = all_survivors,
-  group.by = "group_id",
-  assay = "RNA",
+  subset_obj, 
+  features = all_survivors, 
+  group.by = "group_id", 
+  assay = "RNA", 
   layer = "data"
 )$RNA
 
-# 4) Z-score normalization
+# Z-score normalization
 scaled_mat <- t(scale(t(avg_exp)))
 scaled_mat[is.na(scaled_mat)] <- 0
 
-# 5) column order
+# Define column order
 col_order <- c(
   "IIb-Control", "IIb-Cachexia",
   "IIa/IIx-Control", "IIa/IIx-Cachexia",
   "FAPs-Control", "FAPs-Cachexia"
 )
 valid_cols <- intersect(col_order, colnames(scaled_mat))
+scaled_mat_final <- scaled_mat[, valid_cols]
 
-# FAP-origin heatmap (minimal)
-fap_mat <- scaled_mat[fap_genes, valid_cols, drop = FALSE]
-Heatmap(fap_mat, scale = "none")
+# Column split vector
+split_vec <- c("IIb", "IIb", "IIa/IIx", "IIa/IIx", "FAPs", "FAPs")
 
-# Myonuclei-origin heatmap (minimal)
-myo_mat <- scaled_mat[myo_genes, valid_cols, drop = FALSE]
-Heatmap(myo_mat, scale = "none")
+# Cell size settings
+cell_width <- unit(9, "mm")
+cell_height <- unit(3, "mm")
 
-
+#minimal heatmap 
+Heatmap(
+  scaled_mat_final,
+  row_split = gene_group_vec[rownames(scaled_mat_final)],
+  column_split = split_vec
+)
 
 # ----------------------------------------------------------------------------
 # 7. Figure 2E: NicheNet Ligand-Receptor Interaction Analysis
