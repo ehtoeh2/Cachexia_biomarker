@@ -240,37 +240,10 @@ atrophy_genes_list <- c("Fbxo32", "Trim63")
 atrophy_subset <- plot_data %>% filter(gene_symbol %in% atrophy_genes_list)
 
 # Plot Volcano (Figure 1C)
-volcano_plot <- ggplot(plot_data, aes(x = log2FoldChange, y = -log10(padj), col = gene)) +
-  geom_point(
-    shape = 16, stroke = 0.5, alpha = 0.5, size = 1, 
-    position = position_jitter(width = 0.05, height = 0.05)
-  ) +
-  scale_color_manual(values = volcano_colors) +
-  labs(x = "Log2 Fold Change", y = "-Log10(Adjusted P-value)") +
-  theme_minimal() +
-  theme(
-    axis.title.x = element_text(face = "bold", size = 10),
-    axis.title.y = element_text(face = "bold", size = 10),
-    panel.border = element_rect(color = "black", fill = NA, linewidth = 1), 
-    panel.grid.minor = element_blank(), 
-    panel.grid.major = element_blank(), 
-    legend.position = "right"
-  ) +
-  geom_vline(xintercept = c(-1, 1), linetype = "dashed", linewidth = 0.4, col = "black") +
-  geom_hline(yintercept = -log10(0.05), linetype = "dashed", linewidth = 0.4, col = "black") +
-  # Highlight atrophy markers
-  geom_point(
-    data = atrophy_subset, 
-    aes(x = log2FoldChange, y = -log10(padj)),
-    color = "black", fill = "#9F1D1F", size = 2, shape = 21, stroke = 1
-  ) +
-  geom_text_repel(
-    data = atrophy_subset, 
-    aes(label = gene_symbol),
-    box.padding = 0.5, segment.color = 'black', segment.size = 0.4,
-    size = 4, fontface = "bold.italic", color = "black",
-    max.overlaps = Inf, force = 5, nudge_y = 5
-  )
+
+volcano_plot <- ggplot(plot_data, aes(x = log2FoldChange, y = -log10(padj))) +
+  geom_point() +
+  labs(x = "Log2 Fold Change", y = "-Log10(Adjusted P-value)")
 
 print(volcano_plot)
 ggsave(file.path(OUTPUT_DIR, "Figure1C_Volcano.pdf"), volcano_plot, width = 8, height = 6)
