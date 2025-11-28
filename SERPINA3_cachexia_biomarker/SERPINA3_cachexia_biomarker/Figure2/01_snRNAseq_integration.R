@@ -6,7 +6,7 @@
 #   - Figure 2B: Marker gene dot plot for cell type annotation
 #   - Figure 2C: Cell type proportion analysis
 #
-# Author: Dae-Hwan Kim, Jibeom Ko
+# Author: Dae-Hwan Kim, Ji beom Ko
 # Paper: "An integrative multi-omics framework identifies SERPINA3 as a 
 #         circulating biomarker for cancer cachexia"
 # ============================================================================
@@ -82,11 +82,6 @@ Control2[["percent.mt"]] <- PercentageFeatureSet(Control2, pattern = "^mt-")
 Cachexia1[["percent.mt"]] <- PercentageFeatureSet(Cachexia1, pattern = "^mt-")
 Cachexia2[["percent.mt"]] <- PercentageFeatureSet(Cachexia2, pattern = "^mt-")
 
-# Ribosomal content
-Control1[["percent.ribo"]] <- PercentageFeatureSet(Control1, pattern = "^Rps|^Rpl")
-Control2[["percent.ribo"]] <- PercentageFeatureSet(Control2, pattern = "^Rps|^Rpl")
-Cachexia1[["percent.ribo"]] <- PercentageFeatureSet(Cachexia1, pattern = "^Rps|^Rpl")
-Cachexia2[["percent.ribo"]] <- PercentageFeatureSet(Cachexia2, pattern = "^Rps|^Rpl")
 
 # ----------------------------------------------------------------------------
 # 5. Quality Control Filtering
@@ -100,11 +95,6 @@ Control2 <- subset(Control2, subset = nFeature_RNA > 200 & nFeature_RNA < 5000 &
 Cachexia1 <- subset(Cachexia1, subset = nFeature_RNA > 200 & nFeature_RNA < 5000 & percent.mt < 5)
 Cachexia2 <- subset(Cachexia2, subset = nFeature_RNA > 200 & nFeature_RNA < 5000 & percent.mt < 5)
 
-cat("\nAfter QC filtering:\n")
-cat("  Control1:", ncol(Control1), "\n")
-cat("  Control2:", ncol(Control2), "\n")
-cat("  Cachexia1:", ncol(Cachexia1), "\n")
-cat("  Cachexia2:", ncol(Cachexia2), "\n")
 
 # ----------------------------------------------------------------------------
 # 6. Doublet Detection and Removal (scDblFinder)
@@ -125,12 +115,6 @@ Control2 <- run_scDbl(Control2, dbr = 0.07)
 Cachexia1 <- run_scDbl(Cachexia1, dbr = 0.07)
 Cachexia2 <- run_scDbl(Cachexia2, dbr = 0.07)
 
-cat("After doublet removal:\n")
-cat("  Control1:", ncol(Control1), "\n")
-cat("  Control2:", ncol(Control2), "\n")
-cat("  Cachexia1:", ncol(Cachexia1), "\n")
-cat("  Cachexia2:", ncol(Cachexia2), "\n")
-
 # ----------------------------------------------------------------------------
 # 7. Merge Datasets
 # ----------------------------------------------------------------------------
@@ -141,32 +125,24 @@ Cachexia_merged <- merge(Cachexia1, y = Cachexia2, add.cell.ids = c("Cachexia1",
 # Final merge
 combined <- merge(Control_merged, y = Cachexia_merged, add.cell.ids = c("Control", "Cachexia"))
 
-cat("\nTotal cells after merging:", ncol(combined), "\n")
 
 # ----------------------------------------------------------------------------
 # 8. SCTransform Normalization
 # ----------------------------------------------------------------------------
-options(future.globals.maxSize = 1e15)  # Increase memory limit
 DefaultAssay(combined) <- "RNA"
-
-cat("\nRunning SCTransform...\n")
 combined <- SCTransform(combined, vars.to.regress = "percent.mt", verbose = FALSE)
 
 # ----------------------------------------------------------------------------
 # 9. Dimensionality Reduction (PCA)
 # ----------------------------------------------------------------------------
-cat("Running PCA...\n")
 combined <- RunPCA(combined, npcs = 50, verbose = FALSE)
 
 # Visualize elbow plot
-pdf(file.path(OUTPUT_DIR, "ElbowPlot.pdf"), width = 6, height = 4)
 ElbowPlot(combined, ndims = 50)
-dev.off()
 
 # ----------------------------------------------------------------------------
 # 10. Batch Correction with Harmony
 # ----------------------------------------------------------------------------
-cat("Running Harmony batch correction...\n")
 combined <- RunHarmony(combined, group.by.vars = "orig.ident", dims = 1:10)
 
 # ----------------------------------------------------------------------------
@@ -178,24 +154,13 @@ combined <- FindClusters(combined, resolution = 0.4)
 # ----------------------------------------------------------------------------
 # 12. UMAP Visualization
 # ----------------------------------------------------------------------------
-cat("Running UMAP...\n")
 combined <- RunUMAP(combined, reduction = "harmony", dims = 1:10)
 
 # Set condition factor levels
 combined$orig.ident <- factor(combined$orig.ident, levels = c("Control", "Cachexia"))
 
-# UMAP plot split by condition
-umap_plot <- DimPlot(
-  combined, 
-  reduction = "umap", 
-  label = TRUE, 
-  split.by = "orig.ident", 
-  label.size = 4.0, 
-  pt.size = 0.3
-) + plot_annotation(title = "Integrated snRNA-seq Data")
-
-print(umap_plot)
-ggsave(file.path(OUTPUT_DIR, "Figure2A_UMAP_split.pdf"), umap_plot, width = 12, height = 6)
+# Minimal UMAP plot 
+umap_plot <- DimPlot(combined, reduction = "umap")
 
 # ----------------------------------------------------------------------------
 # 13. Cell Type Annotation
@@ -240,12 +205,7 @@ marker_genes <- c(
 
 DefaultAssay(combined) <- "SCT"
 
-dotplot <- DotPlot(combined, features = marker_genes, cols = c("#FFFFCC", "blue3")) + 
-  RotatedAxis() +
-  labs(title = "Marker Gene Expression by Cluster")
 
-print(dotplot)
-ggsave(file.path(OUTPUT_DIR, "Figure2B_DotPlot_markers.pdf"), dotplot, width = 12, height = 8)
 
 # ----------------------------------------------------------------------------
 # 15. Assign Cell Type Identities
@@ -273,63 +233,19 @@ combined2$orig.ident <- factor(combined2$orig.ident, levels = c("Control", "Cach
 combined2$CellType <- Idents(combined2)
 
 # Dot plot with annotated cell types
-dotplot_annotated <- DotPlot(combined2, features = marker_genes, cols = c("#FFFFCC", "blue3")) + 
-  RotatedAxis() +
-  labs(title = "Marker Gene Expression by Cell Type")
+dotplot_annotated <- DotPlot(combined2, features = marker_genes)
 
-print(dotplot_annotated)
-ggsave(file.path(OUTPUT_DIR, "Figure2B_DotPlot_annotated.pdf"), dotplot_annotated, width = 12, height = 6)
 
 # ----------------------------------------------------------------------------
 # 16. Figure 2A: Final UMAP with Cell Type Labels
 # ----------------------------------------------------------------------------
-# Color scheme for cell types
-cluster_colors <- c(
-  "IIb"         = "#1f78b4",
-  "IIa/IIx"     = "#a6cee3",
-  "FAPs"        = "#4daf4a",
-  "MuSCs"       = "#bebada",
-  "Endothelial" = "#984ea3",
-  "Pericyte"    = "#8dd3c7",
-  "NMJ"         = "#bc80bd",
-  "Macrophage"  = "#66c2a5",
-  "MTJ"         = "#8c96c6"
-)
 
-# UMAP with cell type colors
-umap_celltype <- DimPlot(
-  combined2, 
-  reduction = "umap",
-  label = TRUE, 
-  label.size = 3.5, 
-  pt.size = 0.4,
-  cols = cluster_colors
-) + 
-  theme(legend.position = "right") +
-  labs(title = "Cell Type Annotation")
-
-print(umap_celltype)
-ggsave(file.path(OUTPUT_DIR, "Figure2A_UMAP_celltype.pdf"), umap_celltype, width = 8, height = 6)
+# UMAP with annotated cell type 
+umap_celltype <- DimPlot(combined2, reduction = "umap")
 
 # UMAP split by condition
-umap_split <- DimPlot(
-  combined2, 
-  reduction = "umap", 
-  split.by = "orig.ident",
-  label = FALSE, 
-  label.size = 3.5, 
-  pt.size = 0.4,
-  cols = cluster_colors
-) + 
-  theme(
-    legend.position = "right",
-    axis.text = element_blank(),
-    axis.ticks = element_blank(),
-    axis.line = element_blank()
-  )
+umap_split <- DimPlot(combined2, reduction = "umap", split.by = "orig.ident")
 
-print(umap_split)
-ggsave(file.path(OUTPUT_DIR, "Figure2A_UMAP_split_celltype.pdf"), umap_split, width = 12, height = 5)
 
 # ----------------------------------------------------------------------------
 # 17. Figure 2C: Cell Type Proportion Analysis
@@ -350,31 +266,13 @@ cell_stats <- combined2@meta.data %>%
 # Set cell type order (reverse for stacking)
 cell_stats$CellType <- factor(cell_stats$CellType, levels = rev(new_order))
 
-# Stacked bar plot
+# Minimal proportion barplot
 proportion_plot <- ggplot(cell_stats, aes(x = orig.ident, y = Prop, fill = CellType)) +
-  geom_bar(stat = "identity", position = "stack", width = 0.6, color = "black", size = 0.2) +
-  scale_fill_manual(values = cluster_colors) +
-  scale_y_continuous(labels = scales::percent_format()) +
-  theme_classic() +
-  labs(
-    title = "Cell Type Composition",
-    x = NULL, 
-    y = "Proportion (%)", 
-    fill = "Cell Type"
-  ) +
-  theme(
-    plot.title = element_text(face = "bold", size = 14, hjust = 0.5),
-    axis.text.x = element_text(size = 12, face = "bold", color = "black"),
-    axis.text.y = element_text(size = 10, color = "black"),
-    legend.position = "right",
-    legend.title = element_text(face = "bold")
-  )
+  geom_bar(stat = "identity")
 
-print(proportion_plot)
-ggsave(file.path(OUTPUT_DIR, "Figure2C_CellType_proportion.pdf"), proportion_plot, width = 6, height = 6)
 
 # ----------------------------------------------------------------------------
-# 18. Feature Plots for Key Genes
+# 18. Feature Plots for Key Genes (Supplementary information figure)
 # ----------------------------------------------------------------------------
 # Visualize candidate biomarker genes
 key_genes <- c("Apod", "Serpina3n", "Lox")
@@ -383,28 +281,14 @@ feature_plot <- FeaturePlot(
   combined2, 
   features = key_genes, 
   split.by = "orig.ident", 
-  order = TRUE
-) + 
-  theme(legend.position = "right")
-
-ggsave(file.path(OUTPUT_DIR, "FeaturePlot_key_genes.pdf"), feature_plot, width = 12, height = 10)
+  order = TRUE) 
 
 # ----------------------------------------------------------------------------
 # 19. Save Processed Data
 # ----------------------------------------------------------------------------
-cat("\nSaving processed Seurat object...\n")
-saveRDS(combined2, file.path(OUTPUT_DIR, "snRNAseq_integrated.rds"))
-
-# Save cell type proportions
-write.xlsx(cell_stats, file.path(OUTPUT_DIR, "CellType_proportions.xlsx"))
-
 # Session info
 writeLines(capture.output(sessionInfo()), file.path(OUTPUT_DIR, "snRNAseq_session_info.txt"))
 
 cat("\n============================================\n")
 cat("Figure 2A-C analysis completed!\n")
-cat("Output files saved to:", OUTPUT_DIR, "\n")
-cat("============================================\n")
-cat("\nCell counts by type:\n")
-print(table(Idents(combined2)))
 cat("============================================\n")
