@@ -155,9 +155,6 @@ smallestGroupSize <- 19
 keep <- rowSums(counts(dds_batch) >= 10) >= smallestGroupSize
 dds_batch <- dds_batch[keep, ]
 
-cat("Genes before filtering:", nrow(txi.kallisto$counts), "\n")
-cat("Genes after filtering:", nrow(dds_batch), "\n")
-
 # Set Control as reference level
 dds_batch$condition <- relevel(dds_batch$condition, ref = "Control")
 
@@ -205,28 +202,11 @@ pcaData <- data.frame(
 )
 
 # Color scheme
-pca_colors <- c("Control" = "#373838", "Cachexia" = "#20416C") 
-pca_fill_colors <- c("Control" = "lightgray", "Cachexia" = "skyblue")
+pca_colors <- c("Control" = "A", "Cachexia" = "B") 
+pca_fill_colors <- c("Control" = "C", "Cachexia" = "D")
 
 # Plot PCA (Figure 1B)
-pca_plot <- ggplot(pcaData, aes(x = PC1, y = PC2, color = condition, fill = condition)) +
-  geom_point(size = 3, alpha = 0.8) +
-  stat_ellipse(
-    geom = "polygon", level = 0.95, alpha = 0.2,  
-    linetype = "dashed", linewidth = 0.7, show.legend = FALSE
-  ) +
-  scale_color_manual(values = pca_colors) +
-  scale_fill_manual(values = pca_fill_colors) +
-  xlab(paste0("PC1: ", percentVar[1], "% variance")) +
-  ylab(paste0("PC2: ", percentVar[2], "% variance")) +
-  labs(title = "PCA Plot") +
-  theme_bw() +
-  theme(
-    plot.title = element_text(hjust = 0.5, face = "bold"),
-    plot.subtitle = element_text(hjust = 0.5)
-  ) +
-  coord_cartesian(xlim = c(-60, 100), ylim = c(-35, 35))
-
+pca_plot <- ggplot(pcaData, aes(x = PC1, y = PC2, color = condition, fill = condition)) 
 print(pca_plot)
 ggsave(file.path(OUTPUT_DIR, "Figure1B_PCA.pdf"), pca_plot, width = 8, height = 6)
 
