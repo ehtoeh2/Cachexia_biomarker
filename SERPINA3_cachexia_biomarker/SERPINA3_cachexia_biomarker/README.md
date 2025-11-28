@@ -40,7 +40,7 @@ SERPINA3_cachexia_biomarker/
 │   └── 01_Mouse_serum_proteomics.R       # Fig 3F-I: Heatmaps, Stouffer, Lollipop
 │
 ├── Figure4/                           # Human Serum Validation
-│   └── 01_Human_serum_validation.R       # Fig 4A-C: Violin plot, ROC curve
+│   └── 01_Human_serum_validation.R       # Fig 4A-C: PCA plot, volcano plot
 │
 └── data/                              # Data directory (not included)
     └── README_data.md                 # Data availability information
