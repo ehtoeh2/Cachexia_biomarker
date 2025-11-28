@@ -60,6 +60,7 @@ Myonuclei_GC4_survivors <- survivor_list$Myo_GC4
 # 2. Figure 3G: Proteomics Volcano plot
 # ----------------------------------------------------------------------------
 
+# See Figure 4B volcano plot
 
 # ----------------------------------------------------------------------------
 # 3. Figure 3H: Proteomics Heatmap by Cell Type Origin
