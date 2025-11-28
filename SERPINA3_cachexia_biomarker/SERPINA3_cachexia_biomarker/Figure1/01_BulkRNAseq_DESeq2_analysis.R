@@ -90,21 +90,21 @@ cat("Transcripts after filtering (protein-coding only):", nrow(tx2gene_coding), 
 # ----------------------------------------------------------------------------
 # 4. Define Sample Information
 # ----------------------------------------------------------------------------
-# Sample files from 4 independent cachexia studies
 sample_names <- c(
-  # Control samples (n=20)
-  'JCI(Joshua)_Cont1.tsv','JCI(Joshua)_Cont2.tsv','JCI(Joshua)_Cont3.tsv','JCI(Joshua)_Cont4.tsv',
-  "JCI(Joshua)_Sham1.tsv","JCI(Joshua)_Sham2.tsv","JCI(Joshua)_Sham3.tsv","JCI(Joshua)_Sham4.tsv",
-  "JNCI(Tseng)_Cont1.tsv","JNCI(Tseng)_Cont2.tsv","JNCI(Tseng)_Cont3.tsv",
-  "JEM(Rupert)_Sham1.tsv", "JEM(Rupert)_Sham2.tsv", "JEM(Rupert)_Sham3.tsv",
-  "Embo(sophia)_Cont1.tsv","Embo(sophia)_Cont2.tsv","Embo(sophia)_Cont3.tsv",
-  "Embo(sophia)_Cont4.tsv","Embo(sophia)_Cont5.tsv","Embo(sophia)_Cont6.tsv",
-  # Cachexia samples (n=19)
-  "JCI(Joshua)_SC1.tsv","JCI(Joshua)_SC2.tsv","JCI(Joshua)_SC3.tsv","JCI(Joshua)_SC4.tsv",
-  "JCI(Joshua)_SPC1.tsv","JCI(Joshua)_SPC2.tsv","JCI(Joshua)_SPC3.tsv","JCI(Joshua)_SPC4.tsv",
-  "JNCI(Tseng)_C261.tsv","JNCI(Tseng)_C262.tsv","JNCI(Tseng)_C263.tsv",
-  "JEM(Rupert)_KPC1.tsv","JEM(Rupert)_KPC2.tsv","JEM(Rupert)_KPC3.tsv","JEM(Rupert)_KPC4.tsv",
-  "Embo(sophia)_CX1.tsv","Embo(sophia)_CX2.tsv","Embo(sophia)_CX3.tsv", "Embo(sophia)_CX4.tsv"
+  # --- Control samples (n=20) ---
+  'Data_A_Cont1.tsv','Data_A_Cont2.tsv','Data_A_Cont3.tsv','Data_A_Cont4.tsv',
+  "Data_B_Cont1.tsv","Data_B_Cont2.tsv","Data_B_Cont3.tsv","Data_B_Cont4.tsv",
+  "Data_C_Cont1.tsv","Data_C_Cont2.tsv","Data_C_Cont3.tsv",
+  "Data_D_Cont1.tsv", "Data_D_Cont2.tsv", "Data_D_Cont3.tsv",
+  "Data_E_Cont1.tsv","Data_E_Cont2.tsv","Data_E_Cont3.tsv",
+  "Data_E_Cont4.tsv","Data_E_Cont5.tsv","Data_E_Cont6.tsv",
+  
+  # --- Cachexia samples (n=19) ---
+  "Data_A_Cachexia1.tsv","Data_A_Cachexia2.tsv","Data_A_Cachexia3.tsv","Data_A_Cachexia4.tsv",
+  "Data_B_Cachexia1.tsv","Data_B_Cachexia2.tsv","Data_B_Cachexia3.tsv","Data_B_Cachexia4.tsv",
+  "Data_C_Cachexia1.tsv","Data_C_Cachexia2.tsv","Data_C_Cachexia3.tsv",
+  "Data_D_Cachexia1.tsv","Data_D_Cachexia2.tsv","Data_D_Cachexia3.tsv","Data_D_Cachexia4.tsv",
+  "Data_E_Cachexia1.tsv","Data_E_Cachexia2.tsv","Data_E_Cachexia3.tsv", "Data_E_Cachexia4.tsv"
 )
 
 # Define file paths
@@ -114,11 +114,11 @@ names(files) <- sample_names
 # Define batch information for batch effect correction
 batch <- c(
   # Control batches
-  rep("JCI_Joshua", 4), rep("JCI_Joshua2", 4), rep("JNCI_Tseng", 3),
-  rep("JEM_Rupert", 3), rep("Embo_sophia", 6),
+  rep("Batch_A", 4), rep("Batch_B", 4), rep("Batch_C", 3),
+  rep("Batch_D", 3), rep("Batch_E", 6),
   # Cachexia batches
-  rep("JCI_Joshua", 4), rep("JCI_Joshua2", 4), rep("JNCI_Tseng", 3),
-  rep("JEM_Rupert", 4), rep("Embo_sophia", 4)
+  rep("Batch_A", 4), rep("Batch_B", 4), rep("Batch_C", 3),
+  rep("Batch_D", 4), rep("Batch_E", 4)
 )
 
 # Create sample table
