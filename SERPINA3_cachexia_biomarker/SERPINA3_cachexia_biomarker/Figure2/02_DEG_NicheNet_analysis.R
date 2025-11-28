@@ -5,7 +5,7 @@
 #   - Figure 2D: Cell type-specific DEG heatmap for secreted candidates
 #   - Figure 2E: NicheNet ligand-receptor interaction analysis
 #
-# Author: Dae-Hwan Kim, Jibeom Ko
+# Author: Dae-Hwan Kim, Ji beom Ko
 # Paper: "An integrative multi-omics framework identifies SERPINA3 as a 
 #         circulating biomarker for cancer cachexia"
 # ============================================================================
@@ -54,8 +54,6 @@ Idents(combined2) <- "CellType"
 target_cells <- c("IIb", "IIa/IIx", "FAPs")
 subset_obj <- subset(combined2, idents = target_cells)
 
-cat("Cells in subset:\n")
-print(table(Idents(subset_obj)))
 
 # ----------------------------------------------------------------------------
 # 3. Cell Type-Specific Differential Expression Analysis
@@ -79,34 +77,18 @@ run_celltype_DEG <- function(seurat_obj, celltype_name) {
     ident.1 = "Cachexia", 
     ident.2 = "Control",
     assay = "RNA",
-    logfc.threshold = 0.1, 
+    logfc.threshold = 1, 
     min.pct = 0.01
   )
   
   return(markers)
 }
 
-cat("\nRunning cell type-specific DEG analysis...\n")
 
 # Run for each cell type
 IIb_markers <- run_celltype_DEG(subset_obj, "IIb")
 IIa_IIx_markers <- run_celltype_DEG(subset_obj, "IIa/IIx")
 FAP_markers <- run_celltype_DEG(subset_obj, "FAPs")
-
-cat("DEGs found:\n")
-cat("  IIb:", nrow(IIb_markers), "\n")
-cat("  IIa/IIx:", nrow(IIa_IIx_markers), "\n")
-cat("  FAPs:", nrow(FAP_markers), "\n")
-
-# Save DEG results
-write.xlsx(
-  list(
-    IIb = IIb_markers %>% tibble::rownames_to_column("gene"),
-    IIa_IIx = IIa_IIx_markers %>% tibble::rownames_to_column("gene"),
-    FAPs = FAP_markers %>% tibble::rownames_to_column("gene")
-  ),
-  file.path(OUTPUT_DIR, "CellType_DEG_results.xlsx")
-)
 
 # ----------------------------------------------------------------------------
 # 4. Filter Significant DEGs
@@ -122,10 +104,6 @@ IIa_IIx_sig <- IIa_IIx_markers %>%
 FAP_sig <- FAP_markers %>%
   filter(p_val_adj < 0.05, abs(avg_log2FC) > 1)
 
-cat("\nSignificant DEGs (adj.P < 0.05, |log2FC| > 1):\n")
-cat("  IIb:", nrow(IIb_sig), "\n")
-cat("  IIa/IIx:", nrow(IIa_IIx_sig), "\n")
-cat("  FAPs:", nrow(FAP_sig), "\n")
 
 # ----------------------------------------------------------------------------
 # 5. Identify Cell Type-Specific Secreted Candidates (Survivors)
@@ -147,13 +125,6 @@ Myonuclei_GC3_survivors <- intersect(GC3_genes, myonuclei_sig_genes)
 FAP_gc4_survivors <- intersect(GC4_genes, fap_sig_genes)
 Myonuclei_GC4_survivors <- intersect(GC4_genes, myonuclei_sig_genes)
 
-cat("\nCell type-specific secreted candidates:\n")
-cat("  FAP - GC2:", length(FAP_gc2_survivors), "\n")
-cat("  FAP - GC3:", length(FAP_gc3_survivors), "\n")
-cat("  FAP - GC4:", length(FAP_gc4_survivors), "\n")
-cat("  Myonuclei - GC2:", length(Myonuclei_GC2_survivors), "\n")
-cat("  Myonuclei - GC3:", length(Myonuclei_GC3_survivors), "\n")
-cat("  Myonuclei - GC4:", length(Myonuclei_GC4_survivors), "\n")
 
 # Save survivor lists
 survivor_list <- list(
@@ -169,86 +140,45 @@ saveRDS(survivor_list, file.path(OUTPUT_DIR, "CellType_survivors.rds"))
 # ----------------------------------------------------------------------------
 # 6. Figure 2D: Cell Type-Specific Heatmap
 # ----------------------------------------------------------------------------
-# Combine all survivors
-all_survivors <- unique(c(
-  FAP_gc2_survivors, FAP_gc3_survivors, FAP_gc4_survivors,
-  Myonuclei_GC2_survivors, Myonuclei_GC3_survivors, Myonuclei_GC4_survivors
-))
 
-# Create gene grouping information
-gene_group_vec <- character(length(all_survivors))
-names(gene_group_vec) <- all_survivors
+# 1) FAP-origin & Myonuclei-origin gene sets
+fap_genes <- c(FAP_gc2_survivors, FAP_gc3_survivors, FAP_gc4_survivors)
+myo_genes <- c(Myonuclei_GC2_survivors, Myonuclei_GC3_survivors, Myonuclei_GC4_survivors)
 
-gene_group_vec[c(FAP_gc2_survivors, Myonuclei_GC2_survivors)] <- "GC2"
-gene_group_vec[c(FAP_gc3_survivors, Myonuclei_GC3_survivors)] <- "GC3"
-gene_group_vec[c(FAP_gc4_survivors, Myonuclei_GC4_survivors)] <- "GC4"
-
-# Create group ID for heatmap
+# 2) group_id 
 subset_obj$group_id <- paste(Idents(subset_obj), subset_obj$orig.ident, sep = "-")
 
-# Calculate average expression
+# 3) AverageExpression
 DefaultAssay(subset_obj) <- "RNA"
 avg_exp <- AverageExpression(
-  subset_obj, 
-  features = all_survivors, 
-  group.by = "group_id", 
-  assay = "RNA", 
+  subset_obj,
+  features = all_survivors,
+  group.by = "group_id",
+  assay = "RNA",
   layer = "data"
 )$RNA
 
-# Z-score normalization
+# 4) Z-score normalization
 scaled_mat <- t(scale(t(avg_exp)))
 scaled_mat[is.na(scaled_mat)] <- 0
 
-# Define column order
+# 5) column order
 col_order <- c(
   "IIb-Control", "IIb-Cachexia",
   "IIa/IIx-Control", "IIa/IIx-Cachexia",
   "FAPs-Control", "FAPs-Cachexia"
 )
 valid_cols <- intersect(col_order, colnames(scaled_mat))
-scaled_mat_final <- scaled_mat[, valid_cols]
 
-# Column split vector
-split_vec <- c("IIb", "IIb", "IIa/IIx", "IIa/IIx", "FAPs", "FAPs")
+# FAP-origin heatmap (minimal)
+fap_mat <- scaled_mat[fap_genes, valid_cols, drop = FALSE]
+Heatmap(fap_mat, scale = "none")
 
-# Cell size settings
-cell_width <- unit(9, "mm")
-cell_height <- unit(3, "mm")
+# Myonuclei-origin heatmap (minimal)
+myo_mat <- scaled_mat[myo_genes, valid_cols, drop = FALSE]
+Heatmap(myo_mat, scale = "none")
 
-# Draw heatmap
-pdf(file.path(OUTPUT_DIR, "Figure2D_CellType_heatmap.pdf"), width = 8, height = 12)
-Heatmap(
-  scaled_mat_final,
-  name = "Z-score",
-  col = colorRamp2(c(-1, 1), c("white", "blue3")),
-  
-  # Cell size
-  width = ncol(scaled_mat_final) * cell_width,
-  height = nrow(scaled_mat_final) * cell_height,
-  
-  # Row settings
-  row_split = factor(gene_group_vec[rownames(scaled_mat_final)], 
-                     levels = c("GC2", "GC3", "GC4")),
-  cluster_row_slices = FALSE,
-  
-  # Column settings
-  column_split = factor(split_vec, levels = c("IIb", "IIa/IIx", "FAPs")),
-  column_gap = unit(2, "mm"),
-  
-  row_title_rot = 0,
-  cluster_rows = TRUE,
-  show_row_names = TRUE,
-  row_names_gp = gpar(fontsize = 8),
-  
-  column_order = valid_cols,
-  cluster_columns = FALSE,
-  column_names_rot = 45,
-  
-  rect_gp = gpar(col = "gray90", lwd = 1),
-  border = TRUE
-)
-dev.off()
+
 
 # ----------------------------------------------------------------------------
 # 7. Figure 2E: NicheNet Ligand-Receptor Interaction Analysis
