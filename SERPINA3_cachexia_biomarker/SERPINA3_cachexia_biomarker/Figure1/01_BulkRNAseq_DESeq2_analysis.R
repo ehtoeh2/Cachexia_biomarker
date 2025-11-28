@@ -224,20 +224,13 @@ plot_data <- res_df %>%
     TRUE ~ "Non significant"
   ))
 
-# Count DEGs
-cat("\nDEG counts:\n")
-print(table(plot_data$gene))
 
 # Color scheme
 volcano_colors <- c(
-  "Downregulated" = '#1B3361',
-  "Upregulated" = '#9F1D1F',
-  "Non significant" = 'grey90'
+  "Downregulated" = 'A',
+  "Upregulated" = 'B',
+  "Non significant" = 'C'
 )
-
-# Highlight atrophy markers (validation of cachexia signature)
-atrophy_genes_list <- c("Fbxo32", "Trim63")
-atrophy_subset <- plot_data %>% filter(gene_symbol %in% atrophy_genes_list)
 
 # Plot Volcano (Figure 1C)
 
@@ -245,8 +238,6 @@ volcano_plot <- ggplot(plot_data, aes(x = log2FoldChange, y = -log10(padj))) +
   geom_point() +
   labs(x = "Log2 Fold Change", y = "-Log10(Adjusted P-value)")
 
-print(volcano_plot)
-ggsave(file.path(OUTPUT_DIR, "Figure1C_Volcano.pdf"), volcano_plot, width = 8, height = 6)
 
 # ----------------------------------------------------------------------------
 # 9. Figure 1D: K-means Clustering Heatmap
@@ -258,7 +249,6 @@ sig_genes <- deseq2.res %>%
   filter(!is.na(padj), padj < 0.05, abs(log2FoldChange) >= 1) %>%
   pull(gene)
 
-cat("\nSignificant DEGs:", length(sig_genes), "\n")
 
 # Subset and scale expression matrix
 mat_deg <- combat_mat[intersect(rownames(combat_mat), sig_genes), , drop = FALSE]
@@ -268,10 +258,14 @@ mat_deg <- mat_deg[keep_sd, , drop = FALSE]
 # Z-score normalization
 z <- t(scale(t(mat_deg)))
 
-# Determine optimal k using elbow and silhouette methods
+# Determine optimal k using elbow 
 wss <- sapply(2:10, function(k) {
   kmeans(z, centers = k, nstart = 100, iter.max = 100)$tot.withinss
 })
+
+elbow_df <- data.frame(
+  k = 2:10,
+  wss = wss)
 
 # K-means clustering (k = 5)
 set.seed(1234)
@@ -305,45 +299,13 @@ z_ord <- z_ord[, rownames(ann_col), drop = FALSE]
 ann_row <- data.frame(Cluster = cluster_tbl$cluster_label)
 rownames(ann_row) <- cluster_tbl$gene
 
-# Calculate gaps between clusters
-row_gaps <- cumsum(table(cluster_tbl$cluster_label))
-row_gaps <- row_gaps[-length(row_gaps)]
 
-# Color scheme for heatmap
-bk <- seq(-1, 1, by = 0.005)
-cols <- colorRampPalette(c("#1a3664", "white", "red4"))(length(bk) - 1)
-
-ann_colors <- list(
-  condition = c(Control = "gray", Cachexia = "#1a3664"),
-  batch = c(
-    Embo_sophia = "lightgray", JCI_Joshua = "gray40",
-    JCI_Joshua2 = "skyblue2", JEM_Rupert = "lightpink2", JNCI_Tseng = "red4"
-  ),
-  Cluster = c(GC1 = "gray", GC2 = "lightpink", GC3 = "red4", GC4 = "skyblue2", GC5 = "#1a3664")
-)
-
-# Plot heatmap (Figure 1D)
-pdf(file.path(OUTPUT_DIR, "Figure1D_Heatmap.pdf"), width = 10, height = 12)
+# Heatmap (Figure 1D) - minimal 
 pheatmap(
-  z_ord,           
-  scale = "none",
-  cluster_rows = FALSE,    
-  cluster_cols = FALSE,
-  color = cols, 
-  breaks = bk,
-  annotation_col = ann_col,
-  annotation_row = ann_row,
-  annotation_colors = ann_colors,
-  show_colnames = FALSE,
-  show_rownames = FALSE,
-  gaps_row = row_gaps,
-  main = "K-means Clustering of DEGs (GC1-GC5)",
-  border_color = NA
+  z_ord,
+  scale = "none"
 )
-dev.off()
 
-# Save cluster assignments
-write.xlsx(cluster_tbl, file.path(OUTPUT_DIR, "kmeans_clusters.xlsx"), rowNames = FALSE)
 
 # ----------------------------------------------------------------------------
 # 10. Figure 1E: GO Over-Representation Analysis (ORA)
@@ -363,7 +325,6 @@ ora_all <- compareCluster(
 
 # Save full ORA results
 df_ora <- as.data.frame(ora_all)
-write.xlsx(df_ora, file.path(OUTPUT_DIR, "ORA_full_results.xlsx"))
 
 # Select representative GO terms for visualization
 picked <- tribble(
@@ -399,33 +360,10 @@ cmpdf_sub$Description <- factor(cmpdf_sub$Description, levels = rev(real_desc_or
 cmp_sub <- ora_all
 cmp_sub@compareClusterResult <- cmpdf_sub
 
-# Plot ORA dot plot (Figure 1E)
-ora_plot <- dotplot(
-  cmp_sub, 
-  x = "Cluster", 
-  color = "p.adjust", 
-  showCategory = nrow(cmpdf_sub),
-  label_format = 60
-) + 
-  labs(title = "GO Enrichment Analysis by Gene Cluster") +
-  theme(
-    axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1, size = 10, face = "bold", color = "black"),
-    axis.text.y = element_text(size = 10, color = "black"),
-    panel.grid.major = element_line(color = "grey90", linetype = "dashed")
-  ) +
-  scale_color_gradient(low = "red", high = "blue", trans = "log10", guide = guide_colorbar(reverse = TRUE))
-
-print(ora_plot)
-ggsave(file.path(OUTPUT_DIR, "Figure1E_ORA_dotplot.pdf"), ora_plot, width = 10, height = 8)
+# Minimal ORA Dotplot (Figure 1E)
+dotplot(cmp_sub)
 
 # ----------------------------------------------------------------------------
-# 11. Save Session Info and Key Objects
-# ----------------------------------------------------------------------------
-# Save key objects for downstream analysis
-saveRDS(res_df, file.path(OUTPUT_DIR, "DESeq2_results.rds"))
-saveRDS(cluster_tbl, file.path(OUTPUT_DIR, "kmeans_cluster_table.rds"))
-saveRDS(combat_mat, file.path(OUTPUT_DIR, "combat_corrected_matrix.rds"))
-
 # Session info
 writeLines(capture.output(sessionInfo()), file.path(OUTPUT_DIR, "session_info.txt"))
 
