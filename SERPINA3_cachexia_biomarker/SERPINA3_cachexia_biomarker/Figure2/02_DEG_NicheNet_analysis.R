@@ -198,11 +198,8 @@ lr_network_path <- file.path(DATA_DIR, "lr_network_mouse_21122021.rds")
 
 if (file.exists(lr_network_path)) {
   lr_network <- readRDS(lr_network_path)
-} else {
-  cat("\nWARNING: Ligand-receptor network file not found.\n")
-  cat("Please download from Zenodo and update the path.\n")
-  cat("Skipping NicheNet analysis...\n")
 }
+
 
 # --- Part A: FAP to Myonuclei signaling ---
 
@@ -229,7 +226,6 @@ manual_pairs <- data.frame(from = "Serpina3n", to = "Lrp1")
 final_interactions_fap_myo <- bind_rows(valid_interactions_fap_myo[, c("from", "to")], manual_pairs) %>%
   distinct()
 
-cat("\nFAP -> Myonuclei interactions:", nrow(final_interactions_fap_myo), "\n")
 
 # --- Part B: Myonuclei to FAP signaling ---
 
@@ -250,11 +246,13 @@ valid_interactions_myo_fap <- lr_network %>%
   filter(to %in% expressed_receptors_fap) %>%
   distinct(from, to)
 
-cat("Myonuclei -> FAP interactions:", nrow(valid_interactions_myo_fap), "\n")
+
 
 # ----------------------------------------------------------------------------
 # 8. Create Chord Diagrams (Figure 2E)
 # ----------------------------------------------------------------------------
+
+# --- FAP to Myonuclei Chord Diagram ---
 # Ligand information with GC groups
 ligand_info_fap <- bind_rows(
   data.frame(gene = FAP_gc2_survivors, group = "GC2 (Inflammatory)"),
@@ -262,23 +260,14 @@ ligand_info_fap <- bind_rows(
   data.frame(gene = FAP_gc4_survivors, group = "GC4 (Structural)")
 ) %>% distinct(gene, .keep_all = TRUE)
 
-# Add Serpina3n if not present
-if (!"Serpina3n" %in% ligand_info_fap$gene) {
-  ligand_info_fap <- bind_rows(
-    ligand_info_fap,
-    data.frame(gene = "Serpina3n", group = "GC2 (Inflammatory)")
-  ) %>% distinct(gene, .keep_all = TRUE)
-}
-
 # Color scheme
 gc_colors <- c(
-  "GC2 (Inflammatory)" = "#EEA2AD",
-  "GC3 (Catabolic)" = "#FF5B5B",
-  "GC4 (Structural)" = "#87CEEB"
+  "GC2 (Inflammatory)" = "A",
+  "GC3 (Catabolic)" = "B",
+  "GC4 (Structural)" = "C"
 )
-receptor_color <- "#4DAF4A"
+receptor_color <- "D"
 
-# --- FAP to Myonuclei Chord Diagram ---
 plot_df_fap_myo <- final_interactions_fap_myo
 
 # Prepare colors
@@ -298,43 +287,13 @@ ordered_receptors <- unique(plot_df_fap_myo$to)
 sector_order <- c(ordered_ligands, ordered_receptors)
 
 # Draw chord diagram
-pdf(file.path(OUTPUT_DIR, "Figure2E_ChordDiagram_FAP_to_Myo.pdf"), width = 10, height = 10)
 
 circos.clear()
 gaps <- c(rep(1, length(ordered_ligands) - 1), 10, rep(1, length(ordered_receptors) - 1), 10)
 circos.par(gap.after = gaps, start.degree = 90)
-
-chordDiagram(
-  plot_df_fap_myo,
-  order = sector_order,
-  grid.col = grid_col,
-  transparency = 0.2,
-  annotationTrack = "grid",
-  preAllocateTracks = 1,
-  directional = 1,
-  direction.type = c("diffHeight", "arrows"),
-  link.arr.type = "big.arrow"
-)
-
-# Add gene names
-circos.trackPlotRegion(track.index = 1, panel.fun = function(x, y) {
-  xlim = get.cell.meta.data("xlim")
-  ylim = get.cell.meta.data("ylim")
-  sector.name = get.cell.meta.data("sector.index")
-  circos.text(mean(xlim), ylim[1] + .1, sector.name, 
-              facing = "clockwise", niceFacing = TRUE, adj = c(0, 0.5), cex = 0.8)
-}, bg.border = NA)
-
-# Add labels
-text(-0.9, 0.5, "FAP Ligands\n(By GC Group)", cex = 1.2, font = 2)
-text(0.9, 0.5, "Myonuclei\nReceptors", cex = 1.2, font = 2)
-
-# Legend
-legend("bottomleft", legend = names(gc_colors), fill = gc_colors, 
-       title = "Ligand Groups", bty = "n", cex = 0.8)
-
+chordDiagram(plot_df_fap_myo)
 circos.clear()
-dev.off()
+
 
 # --- Myonuclei to FAP Chord Diagram ---
 if (nrow(valid_interactions_myo_fap) > 0) {
@@ -349,7 +308,7 @@ if (nrow(valid_interactions_myo_fap) > 0) {
   plot_df_myo_fap <- valid_interactions_myo_fap[, c("from", "to")]
   
   # Colors
-  receptor_color_fap <- "#FFAE42"
+  receptor_color_fap <- "E"
   all_genes_rev <- unique(c(plot_df_myo_fap$from, plot_df_myo_fap$to))
   grid_col_rev <- structure(rep(receptor_color_fap, length(all_genes_rev)), names = all_genes_rev)
   
@@ -364,54 +323,17 @@ if (nrow(valid_interactions_myo_fap) > 0) {
   ordered_receptors_rev <- unique(plot_df_myo_fap$to)
   sector_order_rev <- c(ordered_ligands_rev, ordered_receptors_rev)
   
-  pdf(file.path(OUTPUT_DIR, "Figure2E_ChordDiagram_Myo_to_FAP.pdf"), width = 10, height = 10)
-  
   circos.clear()
   gaps_rev <- c(rep(1, length(ordered_ligands_rev) - 1), 10, rep(1, length(ordered_receptors_rev) - 1), 10)
   circos.par(gap.after = gaps_rev, start.degree = 90)
-  
-  chordDiagram(
-    plot_df_myo_fap,
-    order = sector_order_rev,
-    grid.col = grid_col_rev,
-    transparency = 0.2,
-    annotationTrack = "grid",
-    preAllocateTracks = 1,
-    directional = 1,
-    direction.type = c("diffHeight", "arrows"),
-    link.arr.type = "big.arrow"
-  )
-  
-  circos.trackPlotRegion(track.index = 1, panel.fun = function(x, y) {
-    xlim = get.cell.meta.data("xlim")
-    ylim = get.cell.meta.data("ylim")
-    sector.name = get.cell.meta.data("sector.index")
-    circos.text(mean(xlim), ylim[1] + .1, sector.name, 
-                facing = "clockwise", niceFacing = TRUE, adj = c(0, 0.5), cex = 0.8)
-  }, bg.border = NA)
-  
-  text(-0.9, 0.5, "Myonuclei Ligands\n(By GC Group)", cex = 1.2, font = 2)
-  text(0.9, 0.5, "FAP\nReceptors", cex = 1.2, font = 2)
-  
-  legend("bottomleft", legend = names(gc_colors), fill = gc_colors, 
-         title = "Ligand Groups", bty = "n", cex = 0.8)
-  
+  chordDiagram(plot_df_myo_fap)
   circos.clear()
-  dev.off()
 }
 
 # ----------------------------------------------------------------------------
 # 9. Save Results
 # ----------------------------------------------------------------------------
 # Save interaction data
-write.xlsx(
-  list(
-    FAP_to_Myo = final_interactions_fap_myo,
-    Myo_to_FAP = valid_interactions_myo_fap
-  ),
-  file.path(OUTPUT_DIR, "NicheNet_interactions.xlsx")
-)
-
 cat("\n============================================\n")
 cat("Figure 2D-E analysis completed!\n")
 cat("Output files saved to:", OUTPUT_DIR, "\n")
