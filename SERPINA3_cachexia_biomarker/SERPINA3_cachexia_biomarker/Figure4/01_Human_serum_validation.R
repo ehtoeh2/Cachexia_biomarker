@@ -11,7 +11,6 @@
 
 # ----------------------------------------------------------------------------
 # 0. Load Required Packages
-# ----------------------------------------------------------------------------
 library(dplyr)
 library(tidyr)
 library(ggplot2)
@@ -21,9 +20,7 @@ library(sva)
 
 set.seed(1234)
 
-# ----------------------------------------------------------------------------
 # 1. Data Paths Configuration
-# ----------------------------------------------------------------------------
 # NOTE: Modify these paths according to your local environment
 DATA_DIR <- "path/to/your/data"
 OUTPUT_DIR <- file.path(DATA_DIR, "results")
@@ -41,15 +38,76 @@ human_protein_per_sample <- read.xlsx(file.path(DATA_DIR, "human_prot_per_sample
 # fap_ready and myo_ready should contain: Gene, Prot_logFC columns
 # Mouse_protein for reference
 
+# ============================================================================
+# Figure 4A: PCA Analysis with Batch Effect Correction
+# ============================================================================
+
+# Data Preparation
+
+raw_data <- human_protein_per_sample
+rownames(raw_data) <- raw_data$Protein
+raw_data <- raw_data %>% dplyr::select(-Protein)
+
+# Remove missing values (required for ComBat)
+clean_data <- na.omit(raw_data)
+
+
+# Create Metadata
+samples <- colnames(clean_data)
+condition <- substr(samples, 1, 2)  # CT = Control, CX = Cachexia
+
+# Define batch information (modify according to your experimental design)
+batch <- c(rep(1, 3), rep(1, 3), rep(2, 3), rep(2, 3))
+
+meta_data <- data.frame(
+  Sample = samples,
+  condition = factor(condition, levels = c("CT", "CX")),
+  batch = factor(batch)
+)
+
+
+# Batch Effect Correction using ComBat
+# Model matrix preserving condition effect
+mod_combat <- model.matrix(~ condition, data = meta_data)
+
+# Run ComBat
+combat_mat <- ComBat(
+  dat = as.matrix(clean_data),
+  batch = meta_data$batch,
+  mod = mod_combat,
+  par.prior = TRUE,
+  prior.plots = FALSE
+)
+
+# PCA Calculation
+# Note: scale. = FALSE for log2-transformed data (variance already stabilized)
+pca_res <- prcomp(t(combat_mat), scale. = FALSE)
+percentVar <- round(100 * (pca_res$sdev^2 / sum(pca_res$sdev^2)), 1)
+
+# Prepare PCA data for plotting
+pcaData <- data.frame(
+  PC1 = pca_res$x[, 1],
+  PC2 = pca_res$x[, 2],
+  condition = meta_data$condition,
+  batch = meta_data$batch,
+  name = meta_data$Sample
+)
+
+
 # ----------------------------------------------------------------------------
-# 2. Target Genes for Visualization
-# ----------------------------------------------------------------------------
-my_target_genes <- c("SERPINA3", "LBP", "APOD", "C4B", "CFH", "LUM", 
-                     "CPQ", "CTSL", "IFI30", "THBS4")
+# PCA Plot
+pca_plot <- ggplot(pcaData, aes(x = PC1, y = PC2)) +
+  geom_point()
+
+
 
 # ============================================================================
-# SECTION A: Volcano Plot - Human Serum Proteomics
+# Figure 4B: Volcano Plot - Human Serum Proteomics
 # ============================================================================
+
+# Target genes identified in Figures 2 and 3
+my_target_genes <- c("SERPINA3", "LBP", "APOD", "C4B", "CFH", "LUM", 
+                     "CPQ", "CTSL", "IFI30", "THBS4")
 
 # Significance thresholds
 PVAL_CUTOFF <- 0.05
@@ -68,30 +126,13 @@ human_volcano <- human_protein %>%
   )
 
 # Create volcano plot
-volcano_plot <- ggplot(human_volcano, 
-                       aes(x = diff, y = -log10(adj_pval), color = Significance)) +
-  geom_point(alpha = 0.6, size = 1.5) +
-  geom_vline(xintercept = c(-FC_CUTOFF, FC_CUTOFF), 
-             linetype = "dashed", color = "gray") +
-  geom_hline(yintercept = -log10(PVAL_CUTOFF), 
-             linetype = "dashed", color = "gray") +
-  scale_color_manual(values = c("Up" = "#F5A946", 
-                                "Down" = "#1A3664", 
-                                "NS" = "gray80")) +
-  geom_text_repel(aes(label = Label), size = 3, max.overlaps = 20) +
-  labs(
-    title = "Human Serum Proteomics (Cachexia vs Control)",
-    x = "Log2 Fold Change",
-    y = "-Log10 Adjusted P-value"
-  ) +
-  theme_bw()
+volcano_plot <- ggplot(human_volcano, aes(x = diff, y = -log10(adj_pval))) +
+  geom_point()
 
-print(volcano_plot)
-ggsave(file.path(OUTPUT_DIR, "Human_volcano_plot.pdf"), 
-       volcano_plot, width = 8, height = 6)
+
 
 # ============================================================================
-# SECTION B: Cross-Species Validation Scatter Plot
+# Figure 4C: Cross-Species Validation Scatter Plot
 # ============================================================================
 
 # Combine mouse target data
@@ -126,165 +167,17 @@ plot_data <- cross_species_df %>%
     )
   )
 
-# Calculate Pearson correlation
-cor_val <- cor(plot_data$Mouse_LogFC, plot_data$Human_LogFC, method = "pearson")
-
-cat("Cross-species correlation (Pearson r):", round(cor_val, 3), "\n")
-
 # Create scatter plot
-scatter_plot <- ggplot(plot_data, aes(x = Mouse_LogFC, y = Human_LogFC)) +
-  # Quadrant background
-  annotate("rect", xmin = 0, xmax = Inf, ymin = 0, ymax = Inf, 
-           fill = "#E41A1C", alpha = 0.05) +
-  annotate("rect", xmin = -Inf, xmax = 0, ymin = -Inf, ymax = 0, 
-           fill = "#377EB8", alpha = 0.05) +
-  # Points
+scatter_plot <- ggplot(plot_data, aes(x = Mouse_LogFC, y = Human_LogFC)) 
+  
+# Points
   geom_point(aes(color = Concordance, shape = Origin), size = 4, alpha = 0.8) +
   # Labels for concordant genes
   geom_text_repel(
     data = subset(plot_data, Concordance != "Inconsistent"),
-    aes(label = Human_Gene),
-    size = 4.5, fontface = "bold", box.padding = 0.5
-  ) +
-  # Color scale
-  scale_color_manual(values = c("Consistent Up" = "#E41A1C",
-                                "Consistent Down" = "#377EB8",
-                                "Inconsistent" = "gray70")) +
-  # Reference lines
-  geom_hline(yintercept = 0, linetype = "dashed") +
-  geom_vline(xintercept = 0, linetype = "dashed") +
-  # Labels
-  labs(
-    title = "Cross-Species Validation (LogFC Correlation)",
-    subtitle = paste0("Mouse Serum Protein vs Human Serum Protein (R = ", 
-                      round(cor_val, 3), ")"),
-    x = "Mouse Serum Log2 Fold Change",
-    y = "Human Serum Log2 Fold Change"
-  ) +
-  theme_bw(base_size = 14) +
-  theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+    aes(label = Human_Gene)) 
 
-print(scatter_plot)
-ggsave(file.path(OUTPUT_DIR, "Cross_species_scatter.pdf"), 
-       scatter_plot, width = 8, height = 7)
 
-# ============================================================================
-# SECTION C: PCA Analysis with Batch Effect Correction
-# ============================================================================
-
-# ----------------------------------------------------------------------------
-# C1. Data Preparation
-# ----------------------------------------------------------------------------
-raw_data <- human_protein_per_sample
-rownames(raw_data) <- raw_data$Protein
-raw_data <- raw_data %>% dplyr::select(-Protein)
-
-# Remove missing values (required for ComBat)
-clean_data <- na.omit(raw_data)
-
-cat("Proteins after NA removal:", nrow(clean_data), "\n")
-
-# ----------------------------------------------------------------------------
-# C2. Create Metadata
-# ----------------------------------------------------------------------------
-samples <- colnames(clean_data)
-condition <- substr(samples, 1, 2)  # CT = Control, CX = Cachexia
-
-# Define batch information (modify according to your experimental design)
-batch <- c(rep(1, 3), rep(1, 3), rep(2, 3), rep(2, 3))
-
-meta_data <- data.frame(
-  Sample = samples,
-  condition = factor(condition, levels = c("CT", "CX")),
-  batch = factor(batch)
-)
-
-print(meta_data)
-
-# ----------------------------------------------------------------------------
-# C3. Batch Effect Correction using ComBat
-# ----------------------------------------------------------------------------
-# Model matrix preserving condition effect
-mod_combat <- model.matrix(~ condition, data = meta_data)
-
-# Run ComBat
-combat_mat <- ComBat(
-  dat = as.matrix(clean_data),
-  batch = meta_data$batch,
-  mod = mod_combat,
-  par.prior = TRUE,
-  prior.plots = FALSE
-)
-
-cat("ComBat correction completed.\n")
-
-# ----------------------------------------------------------------------------
-# C4. PCA Calculation
-# ----------------------------------------------------------------------------
-# Note: scale. = FALSE for log2-transformed data (variance already stabilized)
-pca_res <- prcomp(t(combat_mat), scale. = FALSE)
-
-# Calculate variance explained
-percentVar <- round(100 * (pca_res$sdev^2 / sum(pca_res$sdev^2)), 1)
-
-cat("Variance explained - PC1:", percentVar[1], "%, PC2:", percentVar[2], "%\n")
-
-# Prepare PCA data for plotting
-pcaData <- data.frame(
-  PC1 = pca_res$x[, 1],
-  PC2 = pca_res$x[, 2],
-  condition = meta_data$condition,
-  batch = meta_data$batch,
-  name = meta_data$Sample
-)
-
-# Rename conditions for visualization
-pcaData$condition <- ifelse(pcaData$condition == "CT", "Control", "Cachexia")
-pcaData$condition <- factor(pcaData$condition, levels = c("Control", "Cachexia"))
-
-# ----------------------------------------------------------------------------
-# C5. PCA Plot
-# ----------------------------------------------------------------------------
-pca_colors <- c("Control" = "#F8766D", "Cachexia" = "#00BFC4")
-pca_fill <- c("Control" = "lightgray", "Cachexia" = "skyblue")
-
-pca_plot <- ggplot(pcaData, aes(x = PC1, y = PC2, color = condition, fill = condition)) +
-  # Confidence ellipse
-  stat_ellipse(
-    geom = "polygon",
-    level = 0.95,
-    alpha = 0.2,
-    show.legend = FALSE
-  ) +
-  # Points
-  geom_point(size = 3, alpha = 0.9) +
-  # Colors
-  scale_color_manual(values = pca_colors) +
-  scale_fill_manual(values = pca_fill) +
-  # Axis labels with variance explained
-  xlab(paste0("PC1: ", percentVar[1], "% variance")) +
-  ylab(paste0("PC2: ", percentVar[2], "% variance")) +
-  # Labels and theme
-  labs(
-    title = "PCA Plot (Post-ComBat)",
-    subtitle = "Human Serum Proteomics Data",
-    color = "Group",
-    fill = "Group"
-  ) +
-  theme_bw() +
-  theme(
-    plot.title = element_text(hjust = 0.5, face = "bold", size = 16),
-    plot.subtitle = element_text(hjust = 0.5, size = 12),
-    axis.title = element_text(face = "bold", size = 12),
-    axis.text = element_text(size = 11),
-    legend.position = "right",
-    panel.grid.minor = element_blank()
-  ) +
-  coord_cartesian(xlim = c(-7, 7), ylim = c(-8, 8))
-
-print(pca_plot)
-ggsave(file.path(OUTPUT_DIR, "Human_PCA_plot.pdf"), 
-       pca_plot, width = 7, height = 6)
 
 # ============================================================================
 # Summary Statistics
@@ -292,29 +185,3 @@ ggsave(file.path(OUTPUT_DIR, "Human_PCA_plot.pdf"),
 cat("\n============================================\n")
 cat("Human Serum Validation Analysis Complete\n")
 cat("============================================\n")
-
-# Volcano plot summary
-cat("\nVolcano Plot Summary:\n")
-cat("  Total proteins:", nrow(human_protein), "\n")
-cat("  Upregulated (adj.P < 0.05, log2FC > 0.58):", 
-    sum(human_volcano$Significance == "Up"), "\n")
-cat("  Downregulated (adj.P < 0.05, log2FC < -0.58):", 
-    sum(human_volcano$Significance == "Down"), "\n")
-
-# Cross-species summary
-cat("\nCross-Species Validation:\n")
-cat("  Total matched proteins:", nrow(plot_data), "\n")
-cat("  Concordant (same direction):", 
-    sum(plot_data$Concordance != "Inconsistent"), "\n")
-cat("  Pearson correlation:", round(cor_val, 3), "\n")
-
-# PCA summary
-cat("\nPCA Analysis:\n")
-cat("  Proteins used:", nrow(combat_mat), "\n")
-cat("  PC1 variance:", percentVar[1], "%\n")
-cat("  PC2 variance:", percentVar[2], "%\n")
-
-cat("\n============================================\n")
-
-# Session info
-sessionInfo()
