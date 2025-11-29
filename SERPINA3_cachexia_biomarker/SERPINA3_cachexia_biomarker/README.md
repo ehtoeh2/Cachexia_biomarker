@@ -63,12 +63,12 @@ SERPINA3_cachexia_biomarker/
 | | C | Cell type proportions | `Figure2/01_snRNAseq_integration.R` |
 | | D | Cell type-specific DEG heatmap | `Figure2/02_DEG_NicheNet_analysis.R` |
 | | E | NicheNet chord diagram | `Figure2/02_DEG_NicheNet_analysis.R` |
-| **3** | F-G | Proteomics heatmaps | `Figure3/01_Mouse_serum_proteomics.R` |
+| **3** | G | Proteomics volcanoplot | `Figure3/01_Mouse_serum_proteomics.R` |
 | | H | Multi-omics integration | `Figure3/01_Mouse_serum_proteomics.R` |
 | | I | Concordant biomarker lollipop | `Figure3/01_Mouse_serum_proteomics.R` |
-| **4** | A | Human proteomics analysis | `Figure4/01_Human_serum_validation.R` |
-| | B | Biomarker score violin plot | `Figure4/01_Human_serum_validation.R` |
-| | C | ROC curve analysis | `Figure4/01_Human_serum_validation.R` |
+| **4** | A | Human proteomics PCA analysis | `Figure4/01_Human_serum_validation.R` |
+| | B | Human proteomics volcano plot | `Figure4/01_Human_serum_validation.R` |
+| | C | Scatter plot for cross-species concordant | `Figure4/01_Human_serum_validation.R` |
 
 ---
 
@@ -87,7 +87,9 @@ SERPINA3_cachexia_biomarker/
 
 ### Proteomics Data
 
-Mouse and human serum proteomics data are available upon reasonable request.
+Mouse serum proteomics data will be provided PRIDE after publication.
+Human serum proteomics data | PXD035832 (Public Datasets)
+
 
 ### External Resources
 
