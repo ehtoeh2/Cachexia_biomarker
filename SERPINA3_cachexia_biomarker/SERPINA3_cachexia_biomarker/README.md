@@ -87,8 +87,8 @@ SERPINA3_cachexia_biomarker/
 
 ### Proteomics Data
 
-Mouse serum proteomics data will be provided PRIDE after publication.
-Human serum proteomics data | PXD035832 (Public Datasets)
+- Mouse serum proteomics data will be provided PRIDE after publication.
+- Human serum proteomics data | PXD035832 (Public Datasets)
 
 
 ### External Resources
