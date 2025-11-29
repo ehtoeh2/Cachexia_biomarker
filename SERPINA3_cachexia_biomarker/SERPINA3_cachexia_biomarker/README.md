@@ -224,7 +224,7 @@ Each analysis script generates output in the `results/` directory:
 If you use this code, please cite:
 
 ```
-Kim DH, Ko J, Kim Y, Lee KH, Kim J. An integrative multi-omics framework 
+Kim DH, Ko JB, Kim Y, Lee KH, Kim J. An integrative multi-omics framework 
 identifies SERPINA3 as a circulating biomarker for cancer cachexia. 
 [Journal Name]. 2025.
 ```
@@ -234,8 +234,8 @@ identifies SERPINA3 as a circulating biomarker for cancer cachexia.
 ## Contact
 
 For questions or issues, please contact:
-- Dae-Hwan Kim: [email]
-- Jihoon Kim: [email]
+- Dae-Hwan Kim: [email: ehtoeh2@korea.ac.kr]
+- Jihoon Kim: [email: kjb9412@korea.ac.kr]
 
 Korea Institute of Science and Technology (KIST)
 
